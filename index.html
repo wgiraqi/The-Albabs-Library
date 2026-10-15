@@ -829,8 +829,9 @@ const LIBRARY = {
 };
 const STORAGE_KEYS = { cart: 'albab.cart.v1', favs: 'albab.favs.v1' };
 const MAX_QTY = 99;
-// حدّ احترازي لطول رابط تيليجرام الكامل بعد الترميز؛ إن زاد عنه نستخدم نسخة مختصرة ثم نعرض الرسالة للنسخ.
-const MAX_TG_URL_LENGTH = 7500;
+// حدّ محافظ لتجنّب روابط تيليجرام الطويلة التي قد تُرجع HTTP 400 على بعض الأجهزة والمتصفحات.
+// إذا تجاوز الطلب هذا الحد، نفتح المحادثة دون نص ونُظهر الرسالة كاملة للنسخ اليدوي.
+const MAX_TG_URL_LENGTH = 1800;
 
 /* =====================================================================
    2) التصنيفات
@@ -1260,11 +1261,16 @@ function telegramUrl(text) {
   return text ? LIBRARY.telegramUrl + '?text=' + encodeURIComponent(text) : LIBRARY.telegramUrl;
 }
 function prepareTelegramLink() {
+  // لا نمرّر أبدًا نصًا طويلًا إلى رابط t.me؛ هذا يمنع خطأ 400 عند طلب جميع الكتب.
   const full = buildOrderMessage(false);
   const fullUrl = telegramUrl(full);
   if (fullUrl.length <= MAX_TG_URL_LENGTH) return { url: fullUrl, text: full, mode: 'full' };
-  const compactUrl = telegramUrl(buildOrderMessage(true));
+
+  const compact = buildOrderMessage(true);
+  const compactUrl = telegramUrl(compact);
   if (compactUrl.length <= MAX_TG_URL_LENGTH) return { url: compactUrl, text: full, mode: 'compact' };
+
+  // مهما كان عدد الكتب، نفتح رابط الحساب القصير ونوفّر نص الطلب كاملًا داخل نافذة النسخ.
   return { url: LIBRARY.telegramUrl, text: full, mode: 'none' };
 }
 function inquiryMessage(b) {
